@@ -46,11 +46,13 @@ The service is designed to be wired into a CLI at startup. A consumer can call t
 
 ```ts
 import os from 'node:os'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 
-import packageJson from './package.json' assert { type: 'json' }
-
 import { NodeCommandRunner, createAutoUpgradeService } from 'upgrade-self'
+
+const require = createRequire(import.meta.url)
+const packageJson = require('./package.json') as { name: string; version: string }
 
 const service = createAutoUpgradeService({
   packageName: packageJson.name,
@@ -83,10 +85,18 @@ await service.runAutomaticUpgrade()
 npm install
 npm run lint
 npm run build
+npm run test:unit
+npm run test:e2e
 npm test
 ```
 
-Note: tsdown requires Node.js 22.18.0 or higher for the build environment. The runtime target is controlled by `package.json` `engines.node`.
+Version requirements:
+
+- Published runtime: Node.js 14.18.0 or higher
+- Test runtime: Node.js 18.0.0 or higher
+- Build environment: Node.js 22.18.0 or higher because `tsdown` requires it
+
+The end-to-end suite stays offline: `tests/e2e` prepends a local stub `npm` or `npm.cmd`, then exercises the real detached runner without contacting the public registry.
 
 [badge-version]: https://img.shields.io/npm/v/upgrade-self.svg
 [badge-downloads]: https://img.shields.io/npm/dt/upgrade-self.svg

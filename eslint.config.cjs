@@ -8,6 +8,17 @@ module.exports = [
   },
   js.configs.recommended,
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+  {
     files: ['src/**/*.ts', 'tests/**/*.ts'],
     languageOptions: {
       ecmaVersion: 'latest',

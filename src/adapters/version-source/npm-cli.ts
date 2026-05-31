@@ -1,6 +1,6 @@
 import type { CommandRunner, VersionSource, VersionSourceOptions, VersionSourceResult } from '../../types.js'
 import { VersionSourceError } from '../../errors.js'
-import { getNpmExecutable } from '../package-manager/npm.js'
+import { buildNpmInvocation } from '../package-manager/npm.js'
 
 export function buildNpmInfoArgs(options: VersionSourceOptions): string[] {
   const distTag = options.distTag ?? 'latest'
@@ -52,8 +52,9 @@ export async function checkForNpmUpdate(
   runner: CommandRunner,
   platform: NodeJS.Platform = process.platform,
 ): Promise<VersionSourceResult> {
-  const result = await runner.run(getNpmExecutable(platform), buildNpmInfoArgs(options), {
-    shell: false,
+  const invocation = buildNpmInvocation(buildNpmInfoArgs(options), platform)
+  const result = await runner.run(invocation.command, invocation.args, {
+    shell: invocation.shell,
     windowsHide: true,
   })
 
@@ -65,8 +66,8 @@ export async function checkForNpmUpdate(
     packageName: options.packageName,
     latestVersion: parseNpmInfoVersion(result.stdout),
     distTag: options.distTag ?? 'latest',
-    registry: options.registry,
     raw: result.stdout,
+    ...(options.registry === undefined ? {} : { registry: options.registry }),
   }
 }
 

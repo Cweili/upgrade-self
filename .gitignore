@@ -44,4 +44,3 @@ dist
 
 # Local auth / test artifacts
 .playwright-cli/
-npm-auth.png

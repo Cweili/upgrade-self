@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildNpmInfoArgs, checkForNpmUpdate, parseNpmInfoVersion } from '../src/adapters/version-source/npm-cli.js'
-import { VersionSourceError } from '../src/errors.js'
+import { buildNpmInfoArgs, checkForNpmUpdate, parseNpmInfoVersion } from '../../src/adapters/version-source/npm-cli.js'
+import { VersionSourceError } from '../../src/errors.js'
 import { FakeCommandRunner } from './helpers/fake-runner.js'
 
 test('buildNpmInfoArgs includes dist-tag and registry overrides', () => {
@@ -39,4 +39,20 @@ test('checkForNpmUpdate delegates to npm and returns the latest version', async 
   assert.equal(result.latestVersion, '1.4.0')
   assert.equal(runner.runs.length, 1)
   assert.equal(runner.runs[0]?.command, 'npm')
+})
+
+test('checkForNpmUpdate wraps npm.cmd through cmd.exe on Windows', async () => {
+  const runner = new FakeCommandRunner()
+  runner.pushResult({
+    exitCode: 0,
+    stdout: '"1.4.0"',
+  })
+
+  await checkForNpmUpdate({
+    packageName: 'auto-upgrade',
+  }, runner, 'win32')
+
+  assert.match(runner.runs[0]?.command ?? '', /cmd\.exe$/iu)
+  assert.equal(runner.runs[0]?.options?.shell, false)
+  assert.deepEqual(runner.runs[0]?.args, ['/d', '/s', '/c', 'npm.cmd', 'info', 'auto-upgrade', 'version', '--json'])
 })

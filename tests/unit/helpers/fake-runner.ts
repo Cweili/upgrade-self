@@ -1,4 +1,4 @@
-import type { CommandResult, CommandRunner, RunCommandOptions } from '../../src/types.js'
+import type { CommandResult, CommandRunner, RunCommandOptions } from '../../../src/types.js'
 
 export class FakeCommandRunner implements CommandRunner {
   public readonly runs: Array<{ command: string; args: string[]; options?: RunCommandOptions }> = []
@@ -16,7 +16,11 @@ export class FakeCommandRunner implements CommandRunner {
   }
 
   public async run(command: string, args: string[], options?: RunCommandOptions): Promise<CommandResult> {
-    this.runs.push({ command, args, options })
+    this.runs.push({
+      command,
+      args,
+      ...(options === undefined ? {} : { options }),
+    })
 
     return this.queue.shift() ?? {
       exitCode: 0,
@@ -26,6 +30,10 @@ export class FakeCommandRunner implements CommandRunner {
   }
 
   public async spawnDetached(command: string, args: string[], options?: RunCommandOptions): Promise<void> {
-    this.detachedRuns.push({ command, args, options })
+    this.detachedRuns.push({
+      command,
+      args,
+      ...(options === undefined ? {} : { options }),
+    })
   }
 }

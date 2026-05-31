@@ -40,6 +40,7 @@ export function createAutoUpgradeService(options: AutoUpgradeServiceOptions) {
   }
 
   async function checkForUpdates(params: { manual?: boolean; registry?: string; distTag?: string } = {}): Promise<UpdateCheckResult> {
+    const registry = params.registry ?? options.registry
     const policy = resolveUpgradePolicy({
       ...DEFAULT_POLICY,
       ...options.policy,
@@ -50,9 +51,9 @@ export function createAutoUpgradeService(options: AutoUpgradeServiceOptions) {
     const decision = shouldCheckForUpdates(state, policy, {
       argv,
       env,
-      isInteractive: options.isInteractive,
-      manual: params.manual,
       now: checkedAt,
+      ...(options.isInteractive === undefined ? {} : { isInteractive: options.isInteractive }),
+      ...(params.manual === undefined ? {} : { manual: params.manual }),
     })
 
     if (!decision.shouldCheck) {
@@ -63,8 +64,8 @@ export function createAutoUpgradeService(options: AutoUpgradeServiceOptions) {
         hasUpdate: false,
         distTag: policy.distTag,
         managerId: packageManager.id,
-        reason: decision.reason,
         state,
+        ...(decision.reason === undefined ? {} : { reason: decision.reason }),
       }
     }
 
@@ -80,8 +81,8 @@ export function createAutoUpgradeService(options: AutoUpgradeServiceOptions) {
 
     const latest = await versionSource.getLatestVersion({
       packageName: options.packageName,
-      registry: params.registry ?? options.registry,
       distTag: policy.distTag,
+      ...(registry === undefined ? {} : { registry }),
     }, commandRunner)
 
     const hasUpdate = compareVersions(options.currentVersion, latest.latestVersion) < 0
@@ -95,11 +96,28 @@ export function createAutoUpgradeService(options: AutoUpgradeServiceOptions) {
         latestVersion: latest.latestVersion,
         hasUpdate: false,
         checkedAt: checkedAtIso,
-        registry: latest.registry,
         distTag: latest.distTag,
         managerId: packageManager.id,
         state: nextState,
+        ...(latest.registry === undefined ? {} : { registry: latest.registry }),
       }
+    }
+
+    const plan = {
+      packageName: options.packageName,
+      currentVersion: options.currentVersion,
+      targetVersion: latest.latestVersion,
+      distTag: latest.distTag,
+      paths,
+      retryDelayMs: policy.retryDelayMs,
+      installCommand: packageManager.buildInstallCommand({
+        packageName: options.packageName,
+        version: latest.latestVersion,
+        addNoAudit: policy.addNoAudit,
+        addNoFund: policy.addNoFund,
+        ...(latest.registry === undefined ? {} : { registry: latest.registry }),
+      }, platform),
+      ...(latest.registry === undefined ? {} : { registry: latest.registry }),
     }
 
     return {
@@ -109,26 +127,11 @@ export function createAutoUpgradeService(options: AutoUpgradeServiceOptions) {
       latestVersion: latest.latestVersion,
       hasUpdate: true,
       checkedAt: checkedAtIso,
-      registry: latest.registry,
       distTag: latest.distTag,
       managerId: packageManager.id,
       state: nextState,
-      plan: {
-        packageName: options.packageName,
-        currentVersion: options.currentVersion,
-        targetVersion: latest.latestVersion,
-        distTag: latest.distTag,
-        registry: latest.registry,
-        paths,
-        retryDelayMs: policy.retryDelayMs,
-        installCommand: packageManager.buildInstallCommand({
-          packageName: options.packageName,
-          version: latest.latestVersion,
-          registry: latest.registry,
-          addNoAudit: policy.addNoAudit,
-          addNoFund: policy.addNoFund,
-        }, platform),
-      },
+      plan,
+      ...(latest.registry === undefined ? {} : { registry: latest.registry }),
     }
   }
 
@@ -138,12 +141,7 @@ export function createAutoUpgradeService(options: AutoUpgradeServiceOptions) {
       return result
     }
 
-    return await scheduleUpgrade(result.plan, {
-      commandRunner,
-      checkedAt: result.checkedAt,
-      execPath: options.execPath,
-      pid: options.pid,
-    })
+    return await scheduleUpgrade(result.plan, createScheduleUpgradeOptions(commandRunner, result.checkedAt, options))
   }
 
   async function runManualUpgrade(params: ManualUpgradeOptions = {}): Promise<ManualUpgradeResult> {
@@ -153,20 +151,15 @@ export function createAutoUpgradeService(options: AutoUpgradeServiceOptions) {
 
     const result = await checkForUpdates({
       manual: true,
-      registry: params.registry,
-      distTag: params.distTag,
+      ...(params.registry === undefined ? {} : { registry: params.registry }),
+      ...(params.distTag === undefined ? {} : { distTag: params.distTag }),
     })
 
     if (params.checkOnly || result.outcome !== 'update-available' || !result.plan || !result.checkedAt) {
       return result
     }
 
-    return await scheduleUpgrade(result.plan, {
-      commandRunner,
-      checkedAt: result.checkedAt,
-      execPath: options.execPath,
-      pid: options.pid,
-    })
+    return await scheduleUpgrade(result.plan, createScheduleUpgradeOptions(commandRunner, result.checkedAt, options))
   }
 
   return {
@@ -185,12 +178,20 @@ export async function schedulePreparedUpgrade(result: UpdateCheckResult, options
   }
 
   const commandRunner = options.commandRunner ?? new NodeCommandRunner()
-  return await scheduleUpgrade(result.plan, {
+  return await scheduleUpgrade(result.plan, createScheduleUpgradeOptions(commandRunner, result.checkedAt, options))
+}
+
+function createScheduleUpgradeOptions(
+  commandRunner: AutoUpgradeServiceOptions['commandRunner'] extends undefined ? NodeCommandRunner : NonNullable<AutoUpgradeServiceOptions['commandRunner']>,
+  checkedAt: string,
+  options: AutoUpgradeServiceOptions,
+) {
+  return {
     commandRunner,
-    checkedAt: result.checkedAt,
-    execPath: options.execPath,
-    pid: options.pid,
-  })
+    checkedAt,
+    ...(options.execPath === undefined ? {} : { execPath: options.execPath }),
+    ...(options.pid === undefined ? {} : { pid: options.pid }),
+  }
 }
 
 export async function deferChecksUntil(storageDir: string, delayMs: number): Promise<void> {

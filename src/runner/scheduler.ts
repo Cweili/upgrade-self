@@ -16,7 +16,6 @@ export async function scheduleUpgrade(
     lastAttemptAt: options.checkedAt,
     lastStatus: 'scheduled',
     lastVersion: plan.targetVersion,
-    lastError: undefined,
     lastLogPath: plan.paths.logPath,
   })
 
@@ -60,7 +59,7 @@ export function createFailedState(
     ...current,
     lastStatus: 'failed',
     lastError: message,
-    lastLogPath: logPath,
     retryAfter,
+    ...(logPath === undefined ? {} : { lastLogPath: logPath }),
   }
 }

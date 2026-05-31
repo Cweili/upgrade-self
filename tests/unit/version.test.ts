@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { compareVersions, hasNewerVersion } from '../src/core/version.js'
-import { VersionFormatError } from '../src/errors.js'
+import { compareVersions, hasNewerVersion } from '../../src/core/version.js'
+import { VersionFormatError } from '../../src/errors.js'
 
 test('compareVersions handles patch bumps', () => {
   assert.equal(compareVersions('1.0.0', '1.0.1') < 0, true)

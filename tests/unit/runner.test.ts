@@ -4,11 +4,11 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
-import { buildNpmInstallCommand } from '../src/adapters/package-manager/npm.js'
-import { buildRunnerScript } from '../src/runner/template.js'
-import { readUpgradeState, resolveUpgradePaths, writeUpgradeState } from '../src/runner/files.js'
-import { scheduleUpgrade } from '../src/runner/scheduler.js'
-import type { CommandRunner, UpgradePlan } from '../src/types.js'
+import { buildNpmInstallCommand } from '../../src/adapters/package-manager/npm.js'
+import { buildRunnerScript } from '../../src/runner/template.js'
+import { readUpgradeState, resolveUpgradePaths, writeUpgradeState } from '../../src/runner/files.js'
+import { createFailedState, scheduleUpgrade } from '../../src/runner/scheduler.js'
+import type { CommandRunner, UpgradePlan } from '../../src/types.js'
 
 async function createStorageDir(): Promise<string> {
   return await mkdtemp(join(tmpdir(), 'auto-upgrade-runner-'))
@@ -107,4 +107,16 @@ test('scheduleUpgrade preserves scheduled state when detached spawn fails', asyn
   } finally {
     await rm(storageDir, { recursive: true, force: true })
   }
+})
+
+test('createFailedState stores the error, log path, and retry timestamp', () => {
+  const state = createFailedState({
+    lastStatus: 'scheduled',
+    lastVersion: '1.2.3',
+  }, 'spawn failed', '2026-05-31T09:00:00.000Z', '/tmp/last-run.log')
+
+  assert.equal(state.lastStatus, 'failed')
+  assert.equal(state.lastError, 'spawn failed')
+  assert.equal(state.retryAfter, '2026-05-31T09:00:00.000Z')
+  assert.equal(state.lastLogPath, '/tmp/last-run.log')
 })

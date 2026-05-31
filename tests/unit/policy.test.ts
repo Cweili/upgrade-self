@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { shouldCheckForUpdates } from '../src/core/policy.js'
+import { shouldCheckForUpdates } from '../../src/core/policy.js'
 
 test('shouldCheckForUpdates respects the enabled flag', () => {
   const result = shouldCheckForUpdates({}, { enabled: false })
