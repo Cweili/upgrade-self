@@ -55,7 +55,7 @@
     "semver": "^7.7.3"
   },
   "devDependencies": {
-    "@eslint/js": "^8.57.1",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.1",
     "@types/semver": "^7.7.1",
     "@typescript-eslint/eslint-plugin": "^8.46.2",
