@@ -1,0 +1,15 @@
+# Source and tests
+src
+tests
+
+# CI and local tooling
+.github
+coverage
+node_modules
+
+# Workspace files
+.editorconfig
+.idea
+.tmp
+*.tmp
+*.log
